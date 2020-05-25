@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify, json, make_response
 
-import pandas as pd
+
 
 
 app = Flask(__name__)
