@@ -8,9 +8,8 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import os
 import os.path
 import pandas as pd
-import codecs
 import MyModules
-import definition
+
 
 def AnnualCost(algo,term,aitaiM,aitaiN):#相対はリスト
 
