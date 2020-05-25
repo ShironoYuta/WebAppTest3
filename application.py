@@ -5,7 +5,6 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import csv
-import definition
 
 app = Flask(__name__)
 
