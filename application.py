@@ -1,5 +1,7 @@
 from flask import Flask, render_template, request, jsonify, json, make_response
 import numpy
+import pandas
+import matplotlib
 app = Flask(__name__)
 
 
@@ -11,4 +13,4 @@ def index():
 if __name__ == "__main__":
     app.run(debug=True)
 
-# 20200531
+# 20200531 3回目
