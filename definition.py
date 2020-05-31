@@ -4,7 +4,6 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import csv
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import os
 import os.path
 import pandas as pd
@@ -136,7 +135,7 @@ def OutputMonthlyCost(Algo,Term,AitaiM,AitaiN,Month):
     ax_CostMonthly.set_xlabel("Day")
     ax_CostMonthly.set_ylabel("erectricity cost[yen/kwh]")
     ax_CostMonthly.set_ylim(8, 16)
-    canvas_CostMonthly = FigureCanvasTkAgg(fig_CostMonthly)
+    canvas_CostMonthly = FigureCanvasAgg(fig_CostMonthly)
     png_output = BytesIO()
     canvas_CostMonthly.print_png(png_output)
     data = png_output.getvalue()
