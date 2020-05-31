@@ -129,7 +129,7 @@ def reset():
     return
 
 if __name__ == "__main__":
-    app.run()
+    app.run(debug = True)
 
 
 # 20200531 3回目
