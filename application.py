@@ -1,135 +1,92 @@
+import dash  
+import dash_core_components as dcc   
+import dash_html_components as html
+import plotly.graph_objs as go  
+import pandas as pd 
 from flask import Flask, render_template, request, jsonify, json, make_response
 from io import BytesIO
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import csv
+import time
 import definition
-app = Flask(__name__)
-plt.style.use('dark_background_mod.mplstyle')
+import pyodbc
 
-@app.route("/PastUI")
-def hello():
-    return "Hello World!<br><a href='ui'>シミュレータ</a><br><br><a href='json'>JSON return</a><br><a href='hello'>Hello</a><br><br>"
+# ①データ読み込み
+df = pd.read_csv('longform.csv')
+dfhokkaido = df[df['area']=='北海道']
 
-@app.route("/json")
-def jsonreturn():
-    # read JSON file and send them to the web client
-    with open("./data/input.json", 'r') as f:
-        json_data = json.load(f)
-    json_str = json.dumps(json_data)
-    return json_str
+app = dash.Dash(__name__)
 
-@app.route('/hello')
-@app.route('/hello/<name>')
-def hello2(name=None):
-# /hello will reply basic html
-# /hello/<name> will reply with username specified in <name>
-    return render_template('hello.html', name=name)
+# ②表示作成
+app.layout = html.Div(children=[
+    html.Div(
+        html.H1('電力調達シミュレータ',
+        style = {'textAlign': 'center'})
+    ),
+    dcc.Dropdown(
+        id = 'demand_drop',
+        options = [
+                       {"label": "月間電力需要(2019)", "value":"DemandMonth2019"},
+                       {"label": "月間電力需要(仮想シナリオ)", "value":"DemandMonthSce"},
+                       {"label": "日次電力需要(2019)", "value":"DemandDay2019"},
+                       {"label": "日次電力需要(仮想シナリオ)", "value":"DemandDaySce"},
+                ],
+        value = 'DemandMonth2019'
+    ),
+    dcc.Input(id='month', value=1, type='text'),
+    dcc.Input(id='day', value=1, type='text'),
+    dcc.Graph(
+        id="DemandGraph",
+    )
+])
 
-@app.route('/')
-def ui():
-# /ui will reply basic html
-# /ui/<name> will reply with username specified in <name>
-    return render_template('calc.html')
+# ③コールバック作成
+@app.callback(
+    dash.dependencies.Output('DemandGraph', 'figure'),
+    [
+        dash.dependencies.Input("demand_drop", "value"),
+        dash.dependencies.Input("month", "value"),
+        dash.dependencies.Input("day", "value"),
+    ],
+)
+def update_graph(demand_drop,month,day):
 
-@app.route('/simulate')
-def simulate():
-# This function read two parameters from web request
-# Returns the sum of two parameters.
+    if demand_drop ==  "DemandMonth2019":
+        Days,TraceAct,TraceFore = definition.OutputMonthlyDemand_1(month)
+        return {
+            'data': [go.Scatter(x = Days,y = TraceFore,name='予測値'),
+                    go.Scatter(x = Days,y = TraceAct,name='2019年実績値'),
+                    ]
+        }
+    elif demand_drop ==  "DemandMonthSce":
+        Days,Trace1,Trace2,Trace3,Trace4,TraceFore = definition.OutputMonthlyDemand(month)
+        return {
+            'data': [go.Scatter(x = Days,y = TraceFore,name='予測値'),
+                    go.Scatter(x = Days,y = Trace1,name='シナリオ1'),
+                    go.Scatter(x = Days,y = Trace2,name='シナリオ2'),
+                    go.Scatter(x = Days,y = Trace3,name='シナリオ3'),
+                    go.Scatter(x = Days,y = Trace4,name='シナリオ4'),
+                    ]
+        }
+    if demand_drop ==  "DemandDay2019":
+        Hours,TraceAct,TraceFore = definition.OutputDailyDemand_1(month,day)
+        return {
+            'data': [go.Scatter(x = Hours,y = TraceFore,name='予測値'),
+                    go.Scatter(x = Hours,y = TraceAct,name='2019年実績値'),
+                    ]
+        }
+    elif demand_drop ==  "DemandDaySce":
+        Hours,Trace1,Trace2,Trace3,Trace4,TraceFore = definition.OutputDailyDemand(month,day)
+        return {
+            'data': [go.Scatter(x = Hours,y = TraceFore,name='予測値'),
+                    go.Scatter(x = Hours,y = Trace1,name='シナリオ1'),
+                    go.Scatter(x = Hours,y = Trace2,name='シナリオ2'),
+                    go.Scatter(x = Hours,y = Trace3,name='シナリオ3'),
+                    go.Scatter(x = Hours,y = Trace4,name='シナリオ4'),
+                    ]
+        }
 
-    Algo = request.args.get('input1')
-    Term = request.args.get('input2')
-    AitaiM = []
-    AitaiN = []
-    for i in range(12):
-        key = "input"+str(i+3) 
-        AitaiM.append(int(request.args.get(key)))
-        key = "input"+str(i+15) 
-        AitaiN.append(int(request.args.get(key)))
-    # replace the next line with your simulator
-    output1,output2 = definition.AnnualCost(Algo,Term,AitaiM,AitaiN)
-    json_str = '{"output1":' + str(output1) +',"output2":' +str(output2) +'}'
-    json_data = json.loads(json_str)
-    # write your output to a file
-    with open('./data/inputs.csv', 'r') as f:
-        reader = csv.reader(f)
-        testlist = list(reader)
-        for row in reader:
-            inputs = [row for row in reader]
-    #inputnum = "input" + str(len(inputs) + 1)
-    inputnum = "input" + str(len(testlist) + 1)
-    li = [inputnum, json_data["output1"], json_data["output2"]]
-    #inputs.append(li)
-    testlist.append(li)
-    with open('./data/inputs.csv', 'a') as f:
-        writer = csv.writer(f,lineterminator='\n')
-        writer.writerow(li)
-    return  json_str
-
-@app.route('/graph1.png',methods=["GET", "POST"])
-def graph1():
-    # データからグラフをプロットする
-    #parame1 = request.form["param1"]
-    #parame1 = 12345
-    #x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-    #y = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-    Annual = request.args.get('input1')
-    Scenario = request.args.get('input2')
-    Simutype = request.args.get('input3')
-    Month = request.args.get('input4')
-    Algo = request.args.get('input5')
-    Term = request.args.get('input6')
-
-    aitaiM = []
-    aitaiN = []
-    for i in range(12):
-        key = "input"+str(i+7) 
-        aitaiM.append(int(request.args.get(key)))
-        key = "input"+str(i+19) 
-        aitaiN.append(int(request.args.get(key)))
-
-    if Annual == "年間コスト":
-        ans = definition.AnnualGraph()
-        return ans
-    elif Simutype == "月コ":
-        if Scenario == "2019":
-            ans = definition.OutputMonthlyCost_1(Algo,Term,aitaiM,aitaiN,Month)
-            return ans
-        else:
-            ans = definition.OutputMonthlyCost(Algo,Term,aitaiM,aitaiN,Month)
-            return ans
-    elif Simutype == "日コ":
-        if Scenario == "2019":
-            ans = definition.OutputDailyCost_1(Algo,Term,aitaiM,aitaiN,Month)
-            return ans
-        else:
-            ans = definition.OutputDailyCost(Algo,Term,aitaiM,aitaiN,Month)
-            return ans
-    elif Simutype == "月イ":
-        if Scenario == "2019":
-            ans = definition.OutputMonthlyInb(Algo,Term,aitaiM,aitaiN,Month)
-            return ans
-        else:
-            ans = definition.OutputMonthlyInb_1(Algo,Term,aitaiM,aitaiN,Month)
-            return ans
-    elif Simutype == "日イ":
-        if Scenario == "2019":
-            ans = definition.OutputDailyInb(Algo,Term,aitaiM,aitaiN,Month)
-            return ans
-        else:
-            ans = definition.OutputDailyInb_1(Algo,Term,aitaiM,aitaiN,Month)
-            return ans
-
-
-@app.route('/reset',methods=["GET", "POST"])
-def reset():
-    with open('./data/inputs.csv',"w") as f:
-        pass
-    return
-
-if __name__ == "__main__":
-    app.run(debug = True)
-
-
-# 20200531 3回目
+if __name__ == '__main__':
+    app.run_server(debug=True)

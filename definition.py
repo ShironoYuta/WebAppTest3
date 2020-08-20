@@ -8,6 +8,8 @@ import os
 import os.path
 import pandas as pd
 import MyModules
+import datetime
+import numpy as np
 
 
 def AnnualCost(algo,term,aitaiM,aitaiN):#相対はリスト
@@ -46,8 +48,8 @@ def AnnualCost(algo,term,aitaiM,aitaiN):#相対はリスト
     AveCost3 = sum(Sce3)/len(Sce3)
     AveCost4 = sum(Sce4)/len(Sce4)
     Costs = [AveCost1,AveCost2,AveCost3,AveCost4]
-    AveCost = sum(Costs)/len(Costs)
-    StdCost = MyModules.calculate_variance(Costs) ** 0.5
+    AveCost = round(sum(Costs)/len(Costs),5)
+    StdCost = round(MyModules.calculate_variance(Costs) ** 0.5, 5)
     return AveCost, StdCost
 
 def AnnualGraph():
@@ -56,8 +58,8 @@ def AnnualGraph():
         inputs = list(reader)
         for row in reader:
             inputs = [row for row in reader]
-    x = [i[2] for i in inputs]
-    y = [float(i[1]) for i in inputs]
+    y = [float(i[2]) for i in inputs]
+    x = [float(i[1]) for i in inputs]
     data_name = [i[0] for i in inputs]
     
     fig = plt.figure()
@@ -203,12 +205,13 @@ def OutputMonthlyCost_1(Algo,Term,AitaiM,AitaiN,Month):
     return response
 
 #日次電力コストグラフ出力
-def OutputDailyCost(Algo,Term,AitaiM,AitaiN,Month):
+def OutputDailyCost(Algo,Term,AitaiM,AitaiN,Month,Day):
     fig_CostDaily = plt.figure()
     plt.grid(which='both')
     ax_CostDaily = fig_CostDaily.add_subplot(111)
     ax_CostDaily.clear()
     Input_CostDaily = int(Month)
+    Input_CostDaily_Day = int(Day)
 
     #Mの分データ取得
     FileName_DC_pre = Term + "_" + Algo + "_Tokyo_"
@@ -233,7 +236,7 @@ def OutputDailyCost(Algo,Term,AitaiM,AitaiN,Month):
     for i in range(4):
         hours = 48
         Numhours = [i+1 for i in range(hours)]
-        DateForC = 19
+        DateForC = Input_CostDaily_Day - 1
         #NumDays = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28]
         day = []
         StartM = DateForC * 25
@@ -261,12 +264,13 @@ def OutputDailyCost(Algo,Term,AitaiM,AitaiN,Month):
     response.headers['Content-Length'] = len(data)
     return response
 
-def OutputDailyCost_1(Algo,Term,AitaiM,AitaiN,Month):
+def OutputDailyCost_1(Algo,Term,AitaiM,AitaiN,Month,Day):
     fig_CostDaily = plt.figure()
     plt.grid(which='both')
     ax_CostDaily = fig_CostDaily.add_subplot(111)
     ax_CostDaily.clear()
     Input_CostDaily = int(Month)
+    Input_CostDaily_Day = int(Day)
 
     #Mの分データ取得
     FileName_DC_pre = Term + "_" + Algo + "_Tokyo_"
@@ -290,7 +294,7 @@ def OutputDailyCost_1(Algo,Term,AitaiM,AitaiN,Month):
     
     hours = 48
     Numhours = [i+1 for i in range(hours)]
-    DateForC = 19
+    DateForC = Input_CostDaily_Day -1
     #NumDays = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28]
     StartM = DateForC * 25
     StartN = DateForC * 23                        
@@ -322,6 +326,60 @@ def OutputMonthlyInb(Algo,Term,AitaiM,AitaiN,Month):
     ax_InbMonthly.clear()
     Input_InbMonthly = int(Month)
 
+    #Mの分データ取得
+    FileName_MI_pre = "Inb_" + Term + "_" + Algo + "_Tokyo_"
+    FileName_MI_M = FileName_MI_pre + str(Input_InbMonthly) + "_" + str(AitaiM[Input_InbMonthly - 1])+"_act_M" + ".csv"
+    FileDir_MI_M = "inb_" + str(Term) + "_" + str(Algo) + "_Tokyo_act_M/"
+    FilePath_soutai_MI_M = 'scenarios/'+ FileDir_MI_M + FileName_MI_M
+    base = os.path.dirname(os.path.abspath(__file__))
+    FilePath_MI_M = os.path.normpath(os.path.join(base, FilePath_soutai_MI_M))
+    data1 = pd.read_csv(FilePath_soutai_MI_M,header = None, encoding="shift-jis").values.tolist()
+
+    #Nの分データ
+    FileName_MI_N = FileName_MI_pre + str(Input_InbMonthly) + "_" + str(AitaiN[Input_InbMonthly - 1])+"_act_N" + ".csv"
+    FileDir_MI_N = "inb_" + str(Term) + "_" + str(Algo) + "_Tokyo_act_N/"
+    FilePath_soutai_MI_N = 'scenarios/'+ FileDir_MI_N + FileName_MI_N
+    base = os.path.dirname(os.path.abspath(__file__))
+    FilePath_MI_N = os.path.normpath(os.path.join(base, FilePath_soutai_MI_N))
+    data2 = pd.read_csv(FilePath_soutai_MI_N,header = None, encoding="shift-jis").values.tolist()
+
+    SceMI= []
+
+    days = int(len(data1[0])/25)
+    NumDays = [i+1 for i in range(days)]
+    #NumDays = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28]
+    for j in range(days):
+        day = []
+        StartM = j * 25
+        StartN = j * 23                        
+        MI_N1 = data2[0][StartN:(StartN + 15)]
+        day.extend(MI_N1)
+        MI_M = data1[0][StartM:(StartM + 25)]
+        day.extend(MI_M)
+        MI_N2 = data2[0][(StartN + 15):(StartN + 23)]
+        day.extend(MI_N2)
+        SceMI.append(sum(day))
+    ax_InbMonthly.plot(NumDays,SceMI,marker='o')
+    ax_InbMonthly.set_xlabel("Day")
+    ax_InbMonthly.set_ylabel("Loss Anount[thousand yen]")
+    ax_InbMonthly.set_ylim(0, 150000)
+    canvas = FigureCanvasAgg(fig_InbMonthly)
+    png_output = BytesIO()
+    canvas.print_png(png_output)
+    data = png_output.getvalue()
+    # HTML側に渡すレスポンスを生成する
+    response = make_response(data)
+    response.headers['Content-Type'] = 'image/png'
+    response.headers['Content-Length'] = len(data)
+    return response
+
+def OutputMonthlyInb_1(Algo,Term,AitaiM,AitaiN,Month):
+    fig_InbMonthly = plt.figure()
+    plt.grid(which='both')
+    ax_InbMonthly = fig_InbMonthly.add_subplot(111)
+    ax_InbMonthly.clear()
+    Input_InbMonthly = int(Month)
+    
 
     #Mの分データ取得
     FileName_MI_pre = "Inb_" + Term + "_" + Algo + "_Tokyo_"
@@ -376,51 +434,51 @@ def OutputMonthlyInb(Algo,Term,AitaiM,AitaiN,Month):
     response.headers['Content-Length'] = len(data)
     return response
 
-def OutputMonthlyInb_1(Algo,Term,AitaiM,AitaiN,Month):
-    fig_InbMonthly = plt.figure()
+#日次インバランスグラフ出力
+
+def OutputDailyInb(Algo,Term,AitaiM,AitaiN,Month,Day):
+    fig_InbDaily = plt.figure()
     plt.grid(which='both')
-    ax_InbMonthly = fig_InbMonthly.add_subplot(111)
-    ax_InbMonthly.clear()
-    Input_InbMonthly = int(Month)
+    ax_InbDaily = fig_InbDaily.add_subplot(111)
+    ax_InbDaily.clear()
+    Input_InbDaily = int(Month)
+    Input_InbDaily_Day = int(Month)
 
     #Mの分データ取得
-    FileName_MI_pre = "Inb_" + Term + "_" + Algo + "_Tokyo_"
-    FileName_MI_M = FileName_MI_pre + str(Input_InbMonthly) + "_" + str(AitaiM[Input_InbMonthly - 1])+"_act_M" + ".csv"
-    FileDir_MI_M = "inb_" + str(Term) + "_" + str(Algo) + "_Tokyo_act_M/"
-    FilePath_soutai_MI_M = 'scenarios/'+ FileDir_MI_M + FileName_MI_M
+    FileName_DI_pre = "Inb_" + Term + "_" + Algo + "_Tokyo_"
+    FileName_DI_M = FileName_DI_pre + str(Input_InbDaily) + "_" + str(AitaiM[Input_InbDaily - 1])+"_act_M" + ".csv"
+    FileDir_DI_M = "inb_" + str(Term) + "_" + str(Algo) + "_Tokyo_act_M/"
+    FilePath_soutai_DI_M = 'scenarios/'+ FileDir_DI_M + FileName_DI_M
     base = os.path.dirname(os.path.abspath(__file__))
-    FilePath_MI_M = os.path.normpath(os.path.join(base, FilePath_soutai_MI_M))
-    data1 = pd.read_csv(FilePath_soutai_MI_M,header = None, encoding="shift-jis").values.tolist()
+    FilePath_DI_M = os.path.normpath(os.path.join(base, FilePath_soutai_DI_M))
+    data1 = pd.read_csv(FilePath_soutai_DI_M,header = None, encoding="shift-jis").values.tolist()
 
     #Nの分データ
-    FileName_MI_N = FileName_MI_pre + str(Input_InbMonthly) + "_" + str(AitaiN[Input_InbMonthly - 1])+"_act_N" + ".csv"
-    FileDir_MI_N = "inb_" + str(Term) + "_" + str(Algo) + "_Tokyo_act_N/"
-    FilePath_soutai_MI_N = 'scenarios/'+ FileDir_MI_N + FileName_MI_N
+    FileName_DI_N = FileName_DI_pre + str(Input_InbDaily) + "_" + str(AitaiN[Input_InbDaily - 1])+"_act_N" + ".csv"
+    FileDir_DI_N = "inb_" + str(Term) + "_" + str(Algo) + "_Tokyo_act_N/"
+    FilePath_soutai_DI_N = 'scenarios/'+ FileDir_DI_N + FileName_DI_N
     base = os.path.dirname(os.path.abspath(__file__))
-    FilePath_MI_N = os.path.normpath(os.path.join(base, FilePath_soutai_MI_N))
-    data2 = pd.read_csv(FilePath_soutai_MI_N,header = None, encoding="shift-jis").values.tolist()
+    FilePath_DI_N = os.path.normpath(os.path.join(base, FilePath_soutai_DI_N))
+    data2 = pd.read_csv(FilePath_soutai_DI_N,header = None, encoding="shift-jis").values.tolist()
 
-    SceMI= []
+    SceDI= []
 
-    days = int(len(data1[0])/25)
-    NumDays = [i+1 for i in range(days)]
-    #NumDays = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28]
-    for j in range(days):
-        day = []
-        StartM = j * 25
-        StartN = j * 23                        
-        MI_N1 = data2[0][StartN:(StartN + 15)]
-        day.extend(MI_N1)
-        MI_M = data1[0][StartM:(StartM + 25)]
-        day.extend(MI_M)
-        MI_N2 = data2[0][(StartN + 15):(StartN + 23)]
-        day.extend(MI_N2)
-        SceMI.append(sum(day))
-    ax_InbMonthly.plot(NumDays,SceMI,marker='o')
-    ax_InbMonthly.set_xlabel("Day")
-    ax_InbMonthly.set_ylabel("Loss Anount[thousand yen]")
-    ax_InbMonthly.set_ylim(0, 150000)
-    canvas = FigureCanvasAgg(fig_InbMonthly)
+    hours = 48
+    Numhours = [i+1 for i in range(hours)]
+    DateForC = Input_InbDaily_Day - 1
+    StartM = DateForC * 25
+    StartN = DateForC * 23                        
+    DI_N1 = data2[0][StartN:(StartN + 15)]
+    SceDI.extend(DI_N1)
+    DI_M = data1[0][StartM:(StartM + 25)]
+    SceDI.extend(DI_M)
+    DI_N2 = data2[0][(StartN + 15):(StartN + 23)]
+    SceDI.extend(DI_N2)
+    ax_InbDaily.plot(Numhours,SceDI,marker='o')    
+    ax_InbDaily.set_xlabel("Time")
+    ax_InbDaily.set_ylabel("Loss Anount[thousand yen]")
+    ax_InbDaily.set_ylim(0, 10000)
+    canvas = FigureCanvasAgg(fig_InbDaily)
     png_output = BytesIO()
     canvas.print_png(png_output)
     data = png_output.getvalue()
@@ -430,13 +488,13 @@ def OutputMonthlyInb_1(Algo,Term,AitaiM,AitaiN,Month):
     response.headers['Content-Length'] = len(data)
     return response
 
-#日次インバランスグラフ出力
-def OutputDailyInb(Algo,Term,AitaiM,AitaiN,Month):
+def OutputDailyInb_1(Algo,Term,AitaiM,AitaiN,Month,Day):
     fig_InbDaily = plt.figure()
     plt.grid(which='both')
     ax_InbDaily = fig_InbDaily.add_subplot(111)
     ax_InbDaily.clear()
     Input_InbDaily = int(Month)
+    Input_InbDaily_Day = int(Month)
 
     #Mの分データ取得
     FileName_DI_pre = "Inb_" + Term + "_" + Algo + "_Tokyo_"
@@ -461,7 +519,7 @@ def OutputDailyInb(Algo,Term,AitaiM,AitaiN,Month):
     for i in range(4):
         hours = 48
         Numhours = [i+1 for i in range(hours)]
-        DateForC = 19
+        DateForC = Input_InbDaily_Day - 1
         day = []
         StartM = DateForC * 25
         StartN = DateForC * 23                        
@@ -488,53 +546,110 @@ def OutputDailyInb(Algo,Term,AitaiM,AitaiN,Month):
     response.headers['Content-Length'] = len(data)
     return response
 
-def OutputDailyInb_1(Algo,Term,AitaiM,AitaiN,Month):
-    fig_InbDaily = plt.figure()
-    plt.grid(which='both')
-    ax_InbDaily = fig_InbDaily.add_subplot(111)
-    ax_InbDaily.clear()
-    Input_InbDaily = int(Month)
 
-    #Mの分データ取得
-    FileName_DI_pre = "Inb_" + Term + "_" + Algo + "_Tokyo_"
-    FileName_DI_M = FileName_DI_pre + str(Input_InbDaily) + "_" + str(AitaiM[Input_InbDaily - 1])+"_act_M" + ".csv"
-    FileDir_DI_M = "inb_" + str(Term) + "_" + str(Algo) + "_Tokyo_act_M/"
-    FilePath_soutai_DI_M = 'scenarios/'+ FileDir_DI_M + FileName_DI_M
-    base = os.path.dirname(os.path.abspath(__file__))
-    FilePath_DI_M = os.path.normpath(os.path.join(base, FilePath_soutai_DI_M))
-    data1 = pd.read_csv(FilePath_soutai_DI_M,header = None, encoding="shift-jis").values.tolist()
 
-    #Nの分データ
-    FileName_DI_N = FileName_DI_pre + str(Input_InbDaily) + "_" + str(AitaiN[Input_InbDaily - 1])+"_act_N" + ".csv"
-    FileDir_DI_N = "inb_" + str(Term) + "_" + str(Algo) + "_Tokyo_act_N/"
-    FilePath_soutai_DI_N = 'scenarios/'+ FileDir_DI_N + FileName_DI_N
-    base = os.path.dirname(os.path.abspath(__file__))
-    FilePath_DI_N = os.path.normpath(os.path.join(base, FilePath_soutai_DI_N))
-    data2 = pd.read_csv(FilePath_soutai_DI_N,header = None, encoding="shift-jis").values.tolist()
 
-    SceDI= []
+def OutputMonthlyDemand(Month):
 
-    hours = 48
-    Numhours = [i+1 for i in range(hours)]
-    DateForC = 19
-    StartM = DateForC * 25
-    StartN = DateForC * 23                        
-    DI_N1 = data2[0][StartN:(StartN + 15)]
-    SceDI.extend(DI_N1)
-    DI_M = data1[0][StartM:(StartM + 25)]
-    SceDI.extend(DI_M)
-    DI_N2 = data2[0][(StartN + 15):(StartN + 23)]
-    SceDI.extend(DI_N2)
-    ax_InbDaily.plot(Numhours,SceDI,marker='o')    
-    ax_InbDaily.set_xlabel("Time")
-    ax_InbDaily.set_ylabel("Loss Anount[thousand yen]")
-    ax_InbDaily.set_ylim(0, 10000)
-    canvas = FigureCanvasAgg(fig_InbDaily)
-    png_output = BytesIO()
-    canvas.print_png(png_output)
-    data = png_output.getvalue()
-    # HTML側に渡すレスポンスを生成する
-    response = make_response(data)
-    response.headers['Content-Type'] = 'image/png'
-    response.headers['Content-Length'] = len(data)
-    return response
+    Input_DemandMonthly = int(Month)
+    SimulardayCSV = pd.read_csv("similarday_h.csv",header = None, encoding="shift-jis").values.tolist()
+    simlist = []
+    for i in SimulardayCSV:
+        if datetime.datetime.strptime(i[0], '%Y-%m-%d').month == Input_DemandMonthly:
+            simlist.append([i[0],i[1],i[2],i[3],i[4]])
+    data1 = pd.read_csv("ActData_modified.csv",encoding="shift-jis")
+    data1["hiduke"] = pd.to_datetime(data1['hiduke'])
+    SceMD1 = []
+    SceMD2 = []
+    SceMD3 = []
+    SceMD4 = []
+    Days = []
+    cnt = 1
+    for i in simlist:
+        SceMD1.append(np.average(data1[data1["hiduke"] == datetime.datetime.strptime(i[1],'%Y-%m-%d')]["power"].values.tolist()))
+        SceMD2.append(np.average(data1[data1["hiduke"] == datetime.datetime.strptime(i[2],'%Y-%m-%d')]["power"].values.tolist()))
+        SceMD3.append(np.average(data1[data1["hiduke"] == datetime.datetime.strptime(i[3],'%Y-%m-%d')]["power"].values.tolist()))
+        SceMD4.append(np.average(data1[data1["hiduke"] == datetime.datetime.strptime(i[4],'%Y-%m-%d')]["power"].values.tolist()))  
+        Days.append(cnt)
+        cnt += 1
+    data2 = pd.read_csv("1year_decision_Tokyo.csv",encoding="shift-jis")
+    data2["hiduke"] = pd.to_datetime(data2['hiduke'])
+    PredMD = []
+    for i in simlist:
+        PredMD.append(np.average(data2[data2["hiduke"] == datetime.datetime.strptime(i[0],'%Y-%m-%d')]["power"].values.tolist()))
+    return Days,SceMD1,SceMD2,SceMD3,SceMD4,PredMD
+
+def OutputMonthlyDemand_1(Month):
+    Input_DemandMonthly = int(Month)
+    SimulardayCSV = pd.read_csv("similarday_h.csv",header = None, encoding="shift-jis").values.tolist()
+    simlist = []
+    for i in SimulardayCSV:
+        if datetime.datetime.strptime(i[0], '%Y-%m-%d').month == Input_DemandMonthly:
+            simlist.append(i[0])
+    data1 = pd.read_csv("ActData_modified.csv",encoding="shift-jis")
+    data1["hiduke"] = pd.to_datetime(data1['hiduke'])
+    SceMD = []
+    Days = []
+    cnt = 1
+    for i in simlist:
+        SceMD.append(np.average(data1[data1["hiduke"] == datetime.datetime.strptime(i,'%Y-%m-%d')]["power"].values.tolist()))
+        Days.append(cnt)
+        cnt += 1
+    data2 = pd.read_csv("1year_decision_Tokyo.csv",encoding="shift-jis")
+    data2["hiduke"] = pd.to_datetime(data2['hiduke'])
+    PredMD = []
+    for i in simlist:
+        PredMD.append(np.average(data2[data2["hiduke"] == datetime.datetime.strptime(i,'%Y-%m-%d')]["power"].values.tolist()))
+    return Days,SceMD,PredMD
+
+#日次電力コストグラフ出力
+def OutputDailyDemand(Month,Day):
+    Input_DemandDaily = int(Month)
+    Input_DemandDaily_Day = int(Day)
+    SimulardayCSV = pd.read_csv("similarday_h.csv",header = None, encoding="shift-jis").values.tolist()
+    for i in SimulardayCSV:
+        if datetime.datetime.strptime(i[0], '%Y-%m-%d').month == Input_DemandDaily:
+            if datetime.datetime.strptime(i[0], '%Y-%m-%d').day == Input_DemandDaily_Day:
+                Daylist = [i[0],i[1],i[2],i[3],i[4]]
+    data1 = pd.read_csv("ActData_modified.csv",encoding="shift-jis")
+    data1["hiduke"] = pd.to_datetime(data1['hiduke'])
+    SceDD1 = []
+    SceDD2 = []
+    SceDD3 = []
+    SceDD4 = []
+    hours = []
+    for i in range(48):
+        SceDD1.append(np.average(data1[(data1["hiduke"] == datetime.datetime.strptime(Daylist[1],'%Y-%m-%d'))&(data1["jikoku_code"] == i+1)]["power"].values.tolist()))
+        SceDD2.append(np.average(data1[(data1["hiduke"] == datetime.datetime.strptime(Daylist[2],'%Y-%m-%d'))&(data1["jikoku_code"] == i+1)]["power"].values.tolist()))
+        SceDD3.append(np.average(data1[(data1["hiduke"] == datetime.datetime.strptime(Daylist[3],'%Y-%m-%d'))&(data1["jikoku_code"] == i+1)]["power"].values.tolist()))
+        SceDD4.append(np.average(data1[(data1["hiduke"] == datetime.datetime.strptime(Daylist[4],'%Y-%m-%d'))&(data1["jikoku_code"] == i+1)]["power"].values.tolist()))  
+        hours.append(i+1)
+    data2 = pd.read_csv("1year_decision_Tokyo.csv",encoding="shift-jis")
+    data2["hiduke"] = pd.to_datetime(data2['hiduke'])
+    PredDD = []
+    for i in range(48):
+        PredDD.append(np.average(data2[(data2["hiduke"] == datetime.datetime.strptime(Daylist[0],'%Y-%m-%d'))&(data1["jikoku_code"] == i+1)]["power"].values.tolist()))
+ 
+    return hours,SceDD1,SceDD2,SceDD3,SceDD4,PredDD
+
+def OutputDailyDemand_1(Month,Day):
+    Input_DemandDaily = int(Month)
+    Input_DemandDaily_Day = int(Day)
+    SimulardayCSV = pd.read_csv("similarday_h.csv",header = None, encoding="shift-jis").values.tolist()
+    for i in SimulardayCSV:
+        if datetime.datetime.strptime(i[0], '%Y-%m-%d').month == Input_DemandDaily:
+            if datetime.datetime.strptime(i[0], '%Y-%m-%d').day == Input_DemandDaily_Day:
+                Daylist = [i[0],i[1],i[2],i[3],i[4]]
+    data1 = pd.read_csv("ActData_modified.csv",encoding="shift-jis")
+    data1["hiduke"] = pd.to_datetime(data1['hiduke'])
+    SceDD = []
+    hours = []
+    for i in range(48):
+        SceDD.append(np.average(data1[(data1["hiduke"] == datetime.datetime.strptime(Daylist[0],'%Y-%m-%d'))&(data1["jikoku_code"] == i+1)]["power"].values.tolist()))  
+        hours.append(i+1)
+    data2 = pd.read_csv("1year_decision_Tokyo.csv",encoding="shift-jis")
+    data2["hiduke"] = pd.to_datetime(data2['hiduke'])
+    PredDD = []
+    for i in range(48):
+        PredDD.append(np.average(data2[(data2["hiduke"] == datetime.datetime.strptime(Daylist[0],'%Y-%m-%d'))&(data1["jikoku_code"] == i+1)]["power"].values.tolist()))
+    return hours,SceDD,PredDD
