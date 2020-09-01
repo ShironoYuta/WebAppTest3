@@ -586,7 +586,7 @@ def OutputMonthlyDemand_1(Month):
     for i in SimulardayCSV:
         if datetime.datetime.strptime(i[0], '%Y-%m-%d').month == Input_DemandMonthly:
             simlist.append(i[0])
-    data1 = pd.read_csv("ActData_modified.csv",encoding="shift-jis")
+    data1 = pd.read_csv("ActData_modified.csv",encoding="utf-8")
     data1["hiduke"] = pd.to_datetime(data1['hiduke'])
     SceMD = []
     Days = []

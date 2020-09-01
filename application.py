@@ -13,10 +13,6 @@ import time
 import definition
 import pyodbc
 
-# ①データ読み込み
-df = pd.read_csv('longform.csv')
-dfhokkaido = df[df['area']=='北海道']
-
 app = dash.Dash(__name__)
 
 # ②表示作成
