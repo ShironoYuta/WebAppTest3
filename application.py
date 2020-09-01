@@ -5,13 +5,10 @@ import plotly.graph_objs as go
 import pandas as pd 
 from flask import Flask, render_template, request, jsonify, json, make_response
 from io import BytesIO
-from matplotlib.backends.backend_agg import FigureCanvasAgg
-from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
 import csv
 import time
 import definition
-import pyodbc
+
 
 app = dash.Dash(__name__)
 

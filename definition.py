@@ -1,8 +1,6 @@
 from flask import Flask, render_template, request, jsonify, json, make_response
 from io import BytesIO
-from matplotlib.backends.backend_agg import FigureCanvasAgg
-from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
+
 import csv
 import os
 import os.path
